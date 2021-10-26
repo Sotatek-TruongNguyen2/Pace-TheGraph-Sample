@@ -4,3 +4,26 @@ type ExampleEntity @entity {
   collection: Bytes! # address
   creator: Bytes! # address
 }
+
+type Collection @entity {
+  # pair address
+  id: ID!
+  owner: Bytes!
+  createdAtTimestamp: BigInt!
+  createdAtBlockNumber: BigInt!,
+  tokens: [Collectible!]! @derivedFrom(field: "collection")
+}
+
+type Collectible @entity {
+  id: ID!
+  timestamp: BigInt! # need this to pull recent txns for specific token or pair
+  collection: Collection!
+  owner: User!
+  tokenID: BigInt!
+  metadataURI: String!
+}
+
+type User @entity {
+  id: ID!
+  tokens: [Collectible!]! @derivedFrom(field: "owner")
+}

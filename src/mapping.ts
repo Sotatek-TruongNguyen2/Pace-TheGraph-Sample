@@ -1,56 +1,37 @@
 import { BigInt } from "@graphprotocol/graph-ts"
 import {
-  PaceArtFactory,
   CollectionDeployed,
   CollectionExchangeSettled,
   CollectionRegistrySettled,
-  OwnershipTransferred
+  OwnershipTransferred,
 } from "../generated/PaceArtFactory/PaceArtFactory"
-import { ExampleEntity } from "../generated/schema"
+import {
+  Transfer,
+  PaceArtStore
+} from "../generated/templates/Collection/PaceArtStore";
+
+import { Collectible, Collection } from "../generated/schema"
+import { Collection as CollectionTemplate } from "../generated/templates"
+import { createUser } from './helpers';
 
 export function handleCollectionDeployed(event: CollectionDeployed): void {
   // Entities can be loaded from the store using a string ID; this ID
   // needs to be unique across all entities of the same type
-  let entity = ExampleEntity.load(event.transaction.from.toHex())
+  let entity = Collection.load(event.params.collection.toHex())
 
   // Entities only exist after they have been saved to the store;
   // `null` checks allow to create entities on demand
   if (!entity) {
-    entity = new ExampleEntity(event.transaction.from.toHex())
+    entity = new Collection(event.params.collection.toHex());
 
-    // Entity fields can be set using simple assignments
-    entity.count = BigInt.fromI32(0)
+    entity.owner = event.params.creator;
+    entity.createdAtTimestamp = event.block.timestamp
+    entity.createdAtBlockNumber = event.block.number
   }
+  
+  CollectionTemplate.create(event.params.collection);
 
-  // BigInt and BigDecimal math are supported
-  entity.count = entity.count + BigInt.fromI32(1)
-
-  // Entity fields can be set based on event parameters
-  entity.collection = event.params.collection
-  entity.creator = event.params.creator
-
-  // Entities can be written to the store with `.save()`
   entity.save()
-
-  // Note: If a handler doesn't require existing field values, it is faster
-  // _not_ to load the entity from the store. Instead, create it fresh with
-  // `new Entity(...)`, set the fields that should be updated and save the
-  // entity back to the store. Fields that were not set or unset remain
-  // unchanged, allowing for partial updates to be applied.
-
-  // It is also possible to access smart contracts from mappings. For
-  // example, the contract that has emitted the event can be connected to
-  // with:
-  //
-  // let contract = Contract.bind(event.address)
-  //
-  // The following functions can then be called on this contract to access
-  // state variables and other data:
-  //
-  // - contract.collections(...)
-  // - contract.newCollection(...)
-  // - contract.owner(...)
-  // - contract.totalCollections(...)
 }
 
 export function handleCollectionExchangeSettled(
@@ -62,3 +43,25 @@ export function handleCollectionRegistrySettled(
 ): void {}
 
 export function handleOwnershipTransferred(event: OwnershipTransferred): void {}
+
+export function handleTransfer(event: Transfer): void {
+  let from = event.params.from;
+  createUser(from);
+  let to = event.params.to; 
+  createUser(to);
+
+  let collectionContract = PaceArtStore.bind(event.address);
+  let collectible = Collectible.load(event.params.tokenId.toString() + "-" + event.address.toHex());
+
+  if (!collectible) {
+    collectible = new Collectible(event.params.tokenId.toString() + "-" + event.address.toHex());
+  }
+
+  collectible.timestamp = event.block.timestamp;
+  collectible.tokenID = event.params.tokenId;
+  collectible.metadataURI = collectionContract.tokenURI(event.params.tokenId).toString();
+  collectible.collection = event.address.toHex();
+  collectible.owner = event.params.to.toHex();
+
+  collectible.save();
+}

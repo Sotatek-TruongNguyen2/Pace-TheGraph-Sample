@@ -1,4 +1,4 @@
-specVersion: 0.0.1
+specVersion: 0.0.2
 schema:
   file: ./schema.graphql
 dataSources:
@@ -8,6 +8,7 @@ dataSources:
     source:
       address: "0x591EDB5A1e8Cd49AAf230CfBFd094d1F8e5F1b05"
       abi: PaceArtFactory
+      startBlock: 9508955 
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.5
@@ -30,3 +31,25 @@ dataSources:
         - event: OwnershipTransferred(indexed address,indexed address)
           handler: handleOwnershipTransferred
       file: ./src/mapping.ts
+
+templates:
+  - kind: ethereum/contract
+    name: Collection
+    network: rinkeby
+    source:
+      abi: PaceArtStore
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      file: ./src/mapping.ts
+      entities:
+        - Collection
+        - Collectible 
+      abis:
+        - name: PaceArtStore
+          file: ./abis/PaceArtStore.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,indexed uint256)
+          handler: handleTransfer
+
